@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="app">
+        <input v-model='name' type="text">
+        <h1>{{name}} 年龄 是 {{age}}</h1>
+    </div>
+</body>
+<script type="text/javascript">
+    // 双向数据绑定
+    let id = 0
+    let currentObserver = null
+
+    function observe(data) {
+        if (!data || typeof data !== 'object') return
+
+        for (var key in data) {
+            let val = data[key]
+            let subject = new Subject()
+            Object.defineProperty(data, key, {
+                enumerable: true,
+                configurable: true,
+                get: function() {
+                    console.log(`get ${key}:${val}`)
+                    if (currentObserver) {
+                        console.log('has currentObserver')
+                        currentObserver.subscribeTo(subject)
+                    }
+                    return val
+                },
+                set: function(newVal) {
+                    console.log(`change happen: ${val} => ${newVal}`)
+                    val = newVal
+                    subject.notify()
+                }
+            })
+
+            if (typeof val === 'object') {
+                observe(val)
+            }
+        }
+    }
+
+
+    class Subject {
+        constructor() {
+            this.id = id++
+                this.observers = []
+        }
+        addObserver(observer) {
+            this.observers.push(observer)
+        }
+
+        removeObserver(observer) {
+            let index = this.observers.indexOf(observer)
+            if (index > -1) {
+                this.observers.splice(index, 1)
+            }
+        }
+
+        notify() {
+            this.observers.forEach(function(observer) {
+                observer.update()
+            })
+        }
+    }
+    class Compile {
+        constructor(vm) {
+            this.vm = vm
+            this.node = vm.$el
+            this.compile()
+        }
+        compile() {
+            this.traverse(this.node)
+        }
+        traverse(node) {
+            if (node.nodeType === 1) { //父节点
+                this.compileNode(node)
+                node.childNodes.forEach(childNode => {
+                    this.traverse(childNode)
+                })
+            } else if (node.nodeType === 3) { //文本
+                this.compileText(node)
+            }
+        }
+        compileText(node) {
+                let reg = /{{(.+?)}}/g
+                let match
+                while (match = reg.exec(node.nodeValue)) {
+                    let raw = match[0]
+                    let key = match[1].trim()
+                    console.log('compileText', key)
+                    node.nodeValue = node.nodeValue.replace(raw, this.vm.$data[key])
+                    new Observer(this, key, function(val, oldVal) {
+                        console.log('老值替换新值', val, oldVal)
+                        node.nodeValue = node.nodeValue.replace(oldVal, val)
+                    })
+                }
+            }
+            // 处理指令
+        compileNode(node) {
+            let attrs = [...node.attributes] //类数组对象转换成数组
+            attrs.forEach(attr => {
+                // attr 是个对象，attr.name 是属性的名字，如：v-model, attr.value是对应的值，如：name
+                if (this.isDirectice(attr.name)) {
+                    let key = attr.value
+                    console.log('key', key, this.vm.$data.name)
+                    node.value = this.vm.$data[key]
+                    new Observer(this.vm, key, function(newVal) {
+                        node.value = newVal
+                    })
+                    node.oninput = (e) => {
+                        this.vm.$data[key] = e.target.value //由于箭头函数，所以这里的this是compile对象
+                    }
+                }
+            })
+        }
+        isDirectice(attrName) {
+            return attrName === 'v-model'
+        }
+    }
+    class mvvm {
+        constructor(opts) {
+            this.init(opts)
+            observe(this.$data)
+            new Compile(this)
+        }
+        init(opts) {
+            this.$el = document.querySelector(opts.el)
+            this.$data = opts.data
+            this.observers = []
+        }
+    }
+
+    class Observer {
+        constructor(vm, key, cb) {
+            this.subjects = {}
+            this.vm = vm
+            this.key = key
+            this.cb = cb
+            this.value = this.getValue()
+        }
+        update() {
+            let oldVal = this.value
+            let value = this.getValue()
+            if (value !== oldVal) {
+                this.value = value
+                console.log('1--', value, '2--', oldVal)
+                this.cb.bind(this.vm)(value, oldVal)
+            }
+        }
+        subscribeTo(subject) {
+            if (!this.subjects[subject.id]) {
+                console.log('subscribeTo...', subject)
+                subject.addObserver(this)
+                this.subjects[subject.id] = subject
+            }
+        }
+        getValue() {
+            currentObserver = this
+            let value = this.vm.vm ? this.vm.vm.$data[this.key] : ''
+            currentObserver = null
+            return value
+        }
+    }
+
+    let vm = new mvvm({
+        el: '#app',
+        data: {
+            name: 'jack',
+            age: 3
+        }
+    })
+
+    setInterval(function() {
+        console.log('时间到')
+        vm.$data.age++
+    }, 1000)
+</script>
+
+</html>
