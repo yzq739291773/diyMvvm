@@ -31,5 +31,5 @@ Object.defineProperty(obj, 'sex', {
 
 obj.sex = 'woman'
 
-console.log(obj.sex)
+console.log(obj.sex) 
 
