@@ -119,6 +119,7 @@
             })
         }
         bindModel(node, attr) {
+            console.log('----', node)
             let key = attr.value
             console.log('key', key, this.vm.$data.name)
             node.value = this.vm.$data[key]

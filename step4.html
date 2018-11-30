@@ -95,9 +95,11 @@
             }
         }
         renderText(node) {
+            // 匹配{{任意字符，任意次数，量词后面加？代表取消默认的贪婪模式，即尽可能最少的匹配}}
             let reg = /{{(.+?)}}/g
             let match
             while (match = reg.exec(node.nodeValue)) {
+                console.log('match', match)
                 let raw = match[0]
                 let key = match[1].trim()
                 node.nodeValue = node.nodeValue.replace(raw, this.$data[key])
@@ -149,10 +151,10 @@
         }
     })
 
-    setInterval(function() {
-        console.log('时间到')
-        vm.$data.age++
-    }, 1000)
+    // setInterval(function() {
+    //     console.log('时间到')
+    //     vm.$data.age++
+    // }, 1000)
 </script>
 
 </html>
